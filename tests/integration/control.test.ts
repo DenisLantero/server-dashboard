@@ -18,8 +18,8 @@ import {
   inspect,
   readConfig,
   writeConfig,
-} from "../src/lib/control";
-import { GET, POST } from "../src/app/api/[...path]/route";
+} from "../../src/lib/control";
+import { GET, POST } from "../../src/app/api/[...path]/route";
 import { NextRequest } from "next/server";
 
 test("systemd controls, config integrity and API authentication", async (t) => {
@@ -33,7 +33,7 @@ test("systemd controls, config integrity and API authentication", async (t) => {
   await mkdir(unitDir, { recursive: true });
   await writeFile(
     join(unitDir, unit),
-    "[Service]\nExecStart=/bin/sleep 300\n[Install]\nWantedBy=default.target\n",
+    "[Service]\nExecStart=sleep 300\n[Install]\nWantedBy=default.target\n",
     { flag: "wx" },
   );
   process.env.DASHBOARD_DATA_DIR = directory;

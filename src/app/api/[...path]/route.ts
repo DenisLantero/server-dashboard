@@ -30,7 +30,8 @@ function authenticated(request: NextRequest) {
 async function body(request: NextRequest) {
   if (
     request.headers.get("X-Dashboard") !== "1" ||
-    request.headers.get("Content-Type") !== "application/json"
+    request.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase() !==
+      "application/json"
   )
     throw new ApiError("Richiesta non valida.", 403);
   const origin = request.headers.get("Origin");
@@ -50,10 +51,15 @@ async function body(request: NextRequest) {
     }
     chunks.push(value);
   }
-  const value = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  let value: unknown;
+  try {
+    value = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new ApiError("JSON non valido.");
+  }
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new ApiError("Richiesta non valida.");
-  return value;
+  return value as Record<string, unknown>;
 }
 function errorResponse(error: unknown) {
   if (error instanceof ApiError)

@@ -40,16 +40,20 @@ export async function definitions(): Promise<Definition[]> {
   return data.map((s) => {
     if (
       !s ||
+      typeof s.id !== "string" ||
       !/^[a-z0-9_-]+$/.test(s.id) ||
       ids.has(s.id) ||
       typeof s.name !== "string" ||
+      !s.name.trim() ||
+      (s.description !== undefined && typeof s.description !== "string") ||
+      typeof s.unit !== "string" ||
       !/^[a-zA-Z0-9_.@:-]+\.service$/.test(s.unit) ||
       s.unit.startsWith("-") ||
       !Array.isArray(s.configs) ||
       !s.configs.every(
         (p: unknown) => typeof p === "string" && isAbsolute(p),
       ) ||
-      (s.scope && !["user", "system"].includes(s.scope))
+      (s.scope !== undefined && !["user", "system"].includes(s.scope))
     )
       throw new ApiError("Definizione server non valida.", 500);
     ids.add(s.id);
