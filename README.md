@@ -53,12 +53,25 @@ L'editor non valida la sintassi specifica dei giochi: verificare i valori prima 
 
 ## Verifica
 
+Richiede Node.js 22 o successivo. Dopo `npm ci`:
+
 ```bash
+npm run format:check
 npm run lint
+npm run typecheck
 npm test
 npm run build
+npx playwright install chromium
+npm run test:ui
+npm run test:integration
 ```
 
-I test di integrazione usano un servizio systemd temporaneo con `sleep`, senza avviare o modificare i server di gioco. Richiedono una sessione systemd utente funzionante. `npm run test:ui` usa Chromium (prima installazione: `npx playwright install chromium`) e un'istanza HTTPS già avviata; legge la password dalla directory dati senza stamparla.
+- `npm test`: test isolati di validazione, autenticazione API, protezione delle richieste e serializzazione delle operazioni. Usano solo directory temporanee, senza systemd.
+- `npm run test:ui`: Playwright avvia la build di produzione su `127.0.0.1:3100` e verifica desktop e mobile con API simulate. Non legge password o configurazioni locali. Copre login, logout, conferme, avvio automatico, editor, conflitti e perdita della connessione. Eseguire prima `npm run build`; chiudere eventuali processi sulla porta 3100.
+- `npm run test:integration`: controlli reali con un servizio systemd utente temporaneo (`sleep`), file temporanei e pulizia finale. Richiede Linux e una sessione systemd utente funzionante. Non avvia né modifica server di gioco.
+
+GitHub Actions esegue tutti questi controlli a ogni PR e push su `main`, con un job separato per systemd. In caso di fallimento dei test browser, trace, screenshot e report sono disponibili negli artefatti della CI. I test UI simulano il backend; il job systemd verifica separatamente le operazioni reali e gli handler API, senza sostituire un collaudo HTTPS sul server di destinazione.
+
+Per formattare il codice: `npm run format`. Il contesto di prodotto è in `PRODUCT.md`; i token del tema nero/viola sono definiti una sola volta in `src/app/globals.css`.
 
 La dashboard deve essere eseguita sul PC che ospita i servizi: non è un'app da pubblicare su hosting serverless. Usa un singolo processo Node, poiché sessioni e coda delle operazioni sono in memoria.

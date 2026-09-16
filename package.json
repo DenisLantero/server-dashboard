@@ -8,8 +8,12 @@
     "start": "NODE_ENV=production node server.mjs",
     "lint": "eslint",
     "setup": "node scripts/setup.mjs",
-    "test": "tsx --test tests/control.test.ts",
-    "test:ui": "playwright test"
+    "test": "tsx --test tests/*.test.ts",
+    "test:ui": "playwright test",
+    "test:integration": "tsx --test tests/integration/*.test.ts",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -34,5 +38,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
