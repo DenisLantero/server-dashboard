@@ -93,3 +93,11 @@ La panoramica distingue lo stato (**Acceso**, **Spento**, **In errore**, **Non d
 I comandi mostrano l’avanzamento vicino al server interessato: avvio, arresto e modifica dell’avvio al boot attendono lo stato confermato dal backend. Dopo 20 secondi senza conferma, la dashboard invita a controllare i log. Per il riavvio viene confermata solo la ricezione del comando, perché il ciclo di riavvio può avvenire tra due letture. Le conferme positive spariscono dopo cinque secondi; gli errori restano finché vengono chiusi o viene eseguita una nuova operazione. In assenza di connessione gli stati vengono indicati come non aggiornati e i controlli sono disabilitati.
 
 Nella scheda **Configurazione**, i file si aprono in un editor nella pagina. Prima di cambiare scheda, aprire un altro file, uscire o tornare alla panoramica viene chiesto se abbandonare eventuali modifiche non salvate.
+
+## Risorse della macchina
+
+La panoramica mostra CPU, RAM, disco `/` e tempo dall’avvio della macchina che esegue la dashboard. Le letture richiedono autenticazione e vengono aggiornate ogni quattro secondi solo mentre la panoramica è aperta. Non rappresentano il consumo dei singoli servizi o eventuali macchine remote.
+
+La CPU è calcolata dalla differenza dei contatori su un campione di almeno 250 ms, aggregato sui core logici (0–100%). La RAM utilizzata è `MemTotal - MemAvailable` da `/proc/meminfo`: la cache recuperabile non viene conteggiata interamente come occupata. Il disco misura i blocchi occupati del filesystem `/`, non eventuali volumi separati dei giochi. RAM e disco sono espressi in GiB. In un container le letture riflettono le risorse visibili al processo, non necessariamente i limiti assegnati al container.
+
+Le richieste concorrenti condividono il campione, conservato per tre secondi; non viene avviato alcun processo di monitoraggio permanente. Metriche mancanti vengono indicate come non disponibili, senza impedirti di gestire i server.

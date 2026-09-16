@@ -11,6 +11,9 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
     logText: "2026-09-16T20:00:00+0200 Server ready\n",
     logStatus: 200,
     logRequests: 0,
+    resourceRequests: 0,
+    resourceStatus: 200,
+    cpuPercent: 25,
     text: "difficulty=normal\n",
     actions: [] as { id: string; action: string }[],
     servers: servers ?? [
@@ -50,6 +53,18 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
       return state.unavailable
         ? reply({ error: "Non disponibile" }, 503)
         : reply(state.servers);
+    if (path === "/api/resources") {
+      state.resourceRequests++;
+      return state.resourceStatus === 200
+        ? reply({
+            cpuPercent: state.cpuPercent,
+            cpuCount: 8,
+            memory: { used: 8 * 2 ** 30, total: 32 * 2 ** 30 },
+            disk: { used: 100 * 2 ** 30, total: 500 * 2 ** 30 },
+            uptimeSeconds: 90000,
+          })
+        : reply({ error: "Unavailable" }, state.resourceStatus);
+    }
     if (path === "/api/logs") {
       state.logRequests++;
       expect(new URL(request.url()).searchParams.get("id")).toBe("minecraft");
@@ -454,4 +469,41 @@ test("unconfirmed command times out without falsely reporting success", async ({
   await expect(
     page.getByText("Operazione completata.", { exact: true }),
   ).not.toBeVisible();
+});
+
+test("host resources refresh only in overview and recover from errors", async ({
+  page,
+}) => {
+  const state = await mockDashboard(page);
+  await login(page);
+  const panel = page.getByRole("region", { name: "Risorse della macchina" });
+  await expect(panel.getByText("25%", { exact: true })).toBeVisible();
+  await expect(panel.getByText("8 / 32 GiB", { exact: true })).toBeVisible();
+  await expect(panel.getByText("100 / 500 GiB", { exact: true })).toBeVisible();
+  await expect(panel.getByText("1 g 1 h 0 min", { exact: true })).toBeVisible();
+  state.resourceStatus = 503;
+  await expect(panel.getByRole("status")).toContainText(
+    "Metriche non disponibili",
+    { timeout: 10_000 },
+  );
+  await expect(panel.getByText("25%", { exact: true })).not.toBeVisible();
+  state.resourceStatus = 200;
+  state.cpuPercent = 40;
+  await expect(panel.getByText("40%", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("resources.png"),
+    fullPage: true,
+  });
+  await openDetail(page);
+  const count = state.resourceRequests;
+  await page.waitForTimeout(4500);
+  expect(state.resourceRequests).toBe(count);
+  await expect(panel).not.toBeVisible();
 });

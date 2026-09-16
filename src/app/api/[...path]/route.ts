@@ -1,3 +1,4 @@
+import { readHostResources } from "@/lib/host-resources";
 import { readLogs } from "@/lib/logs";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
@@ -80,6 +81,8 @@ function errorResponse(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     authenticated(request);
+    if (request.nextUrl.pathname === "/api/resources")
+      return json(await readHostResources());
     if (request.nextUrl.pathname === "/api/servers")
       return json(await Promise.all((await definitions()).map(inspect)));
     if (request.nextUrl.pathname === "/api/logs")
