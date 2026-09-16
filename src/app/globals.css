@@ -128,3 +128,14 @@ button:not(:disabled),
   outline: 2px solid var(--ring);
   outline-offset: 3px;
 }
+
+/* Reserve scrollbar space on short and long pages to keep navigation stable. */
+html {
+  overflow-y: scroll;
+}
+@supports (scrollbar-gutter: stable) {
+  html {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
