@@ -18,7 +18,9 @@ Personale, chiara, discreta. Conservare l'identità Serverspace e il tema nero/v
 
 ## Design Principles
 
-- Rendere leggibile lo stato prima delle azioni.
+- Rendere leggibile lo stato prima delle azioni: etichette e icone distinte dai pulsanti di comando.
+- Dedicare la panoramica alla lettura rapida; spostare log, configurazione e avvio al boot nel dettaglio del server.
+- Eliminare slogan e testo introduttivo superfluo; mostrare feedback vicino alla relativa azione, con conferme temporanee ed errori persistenti.
 - Confermare arresti e riavvii che disconnettono i giocatori.
 - Non perdere modifiche non salvate o nascondere errori di connessione.
 - Mantenere i controlli coerenti usando shadcn/ui e Radix.

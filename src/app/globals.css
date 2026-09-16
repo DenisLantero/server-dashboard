@@ -74,15 +74,6 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
-.card-banner {
-  background:
-    radial-gradient(
-      ellipse at 10% 0%,
-      oklch(0.33 0.14 300 / 33%),
-      transparent 75%
-    ),
-    oklch(0.195 0.026 295);
-}
 button:not(:disabled),
 [role="switch"]:not(:disabled) {
   cursor: pointer;
@@ -99,4 +90,41 @@ button:not(:disabled),
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.status-success {
+  color: oklch(0.8 0.15 160);
+}
+.status-muted {
+  color: oklch(0.7 0.014 295);
+}
+.status-error {
+  color: oklch(0.78 0.14 15);
+}
+.status-warning {
+  color: oklch(0.84 0.13 85);
+}
+.server-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 0.25rem;
+  border-bottom: 2px solid transparent;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+.server-tab[data-state="active"] {
+  border-bottom-color: var(--ring);
+  color: var(--foreground);
+}
+.server-tab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
 }
