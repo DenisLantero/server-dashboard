@@ -1,3 +1,4 @@
+import { HostResourcePanel } from "./host-resource-panel";
 import Link from "next/link";
 import { ChevronRight, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export function ServerOverview({
           Aggiornamento ogni 4 s
         </span>
       </div>
+      <HostResourcePanel />
       {servers.length ? (
         <div className="overflow-hidden rounded-xl border border-border bg-card/40">
           <div className="hidden grid-cols-[minmax(0,1fr)_190px_210px] gap-5 border-b border-border px-6 py-3 text-xs font-medium text-muted-foreground md:grid">
