@@ -1,0 +1,18 @@
+[Unit]
+Description=Server Dashboard - Next.js
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/YOUR_USER/server-dashboard
+ExecStart=/ABSOLUTE/PATH/TO/node server.mjs
+Environment=NODE_ENV=production
+Environment=PORT=9080
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "minecraft",
+    "name": "Minecraft",
+    "description": "Il mio mondo moddato",
+    "unit": "minecraft.service",
+    "scope": "user",
+    "configs": ["/home/YOUR_USER/minecraft-server/server.properties"]
+  },
+  {
+    "id": "palworld",
+    "name": "Palworld",
+    "description": "Dedicated server",
+    "unit": "palworld.service",
+    "scope": "user",
+    "configs": [
+      "/home/YOUR_USER/palworld-server/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
+    ]
+  }
+]
