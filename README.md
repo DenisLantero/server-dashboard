@@ -2,7 +2,8 @@
 
 Una dashboard personale in **Next.js, TypeScript e shadcn/ui**, con tema nero/viola, per gestire i server di gioco già configurati con systemd.
 
-- Schede dei server con stato aggiornato ogni quattro secondi.
+- Panoramica compatta con stato esplicito e controlli separati, aggiornata ogni quattro secondi.
+- Pagina dedicata `/servers/<id>` per log, configurazione e avvio al boot.
 - Log systemd per ciascun server, con aggiornamento automatico disattivabile.
 - Accensione, arresto e riavvio; conferma prima di interrompere un server.
 - Interruttore indipendente per l'avvio automatico al boot.
@@ -54,7 +55,7 @@ L'editor non valida la sintassi specifica dei giochi: verificare i valori prima 
 
 ## Log dei server
 
-Espandere **Log del server** nella scheda: vengono letti gli ultimi 200 eventi del journal, con data e ora, dal meno al più recente. Il pannello funziona anche a server spento. Si aggiorna ogni quattro secondi mentre è aperto; l'interruttore mette in pausa gli aggiornamenti e **Aggiorna log** richiede una nuova lettura. Chiudendo il pannello si interrompono le richieste.
+Aprire un server dalla panoramica: la scheda **Log** nella pagina del server è la vista iniziale e vengono letti gli ultimi 200 eventi del journal, con data e ora, dal meno al più recente. Il pannello funziona anche a server spento. Si aggiorna ogni quattro secondi mentre la scheda Log è visibile; l'interruttore mette in pausa gli aggiornamenti e **Aggiorna log** richiede una nuova lettura. Passando a Configurazione o tornando alla panoramica si interrompono le richieste.
 
 La dashboard legge soltanto il journal dell'unità configurata, tramite `journalctl --user-unit` per i servizi utente e `journalctl --unit` per quelli di sistema. Non esegue comandi forniti dal browser e richiede la stessa sessione autenticata degli altri controlli. Ogni lettura ha un timeout di 10 secondi e un limite di 1 MiB; errori o output troppo grande vengono segnalati nel pannello.
 
@@ -84,3 +85,11 @@ GitHub Actions esegue tutti questi controlli a ogni PR e push su `main`, con un 
 Per formattare il codice: `npm run format`. Il contesto di prodotto è in `PRODUCT.md`; i token del tema nero/viola sono definiti una sola volta in `src/app/globals.css`.
 
 La dashboard deve essere eseguita sul PC che ospita i servizi: non è un'app da pubblicare su hosting serverless. Usa un singolo processo Node, poiché sessioni e coda delle operazioni sono in memoria.
+
+## Navigazione e feedback
+
+La panoramica distingue lo stato (**Acceso**, **Spento**, **In errore**, **Non disponibile**) dalle azioni **Avvia** e **Arresta**. Il riavvio si trova nel dettaglio. Arresto e riavvio richiedono conferma.
+
+I comandi mostrano l’avanzamento vicino al server interessato: avvio, arresto e modifica dell’avvio al boot attendono lo stato confermato dal backend. Dopo 20 secondi senza conferma, la dashboard invita a controllare i log. Per il riavvio viene confermata solo la ricezione del comando, perché il ciclo di riavvio può avvenire tra due letture. Le conferme positive spariscono dopo cinque secondi; gli errori restano finché vengono chiusi o viene eseguita una nuova operazione. In assenza di connessione gli stati vengono indicati come non aggiornati e i controlli sono disabilitati.
+
+Nella scheda **Configurazione**, i file si aprono in un editor nella pagina. Prima di cambiare scheda, aprire un altro file, uscire o tornare alla panoramica viene chiesto se abbandonare eventuali modifiche non salvate.

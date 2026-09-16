@@ -6,6 +6,8 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
     authenticated: false,
     unavailable: false,
     conflict: false,
+    actionError: false,
+    delayState: false,
     logText: "2026-09-16T20:00:00+0200 Server ready\n",
     logStatus: 200,
     logRequests: 0,
@@ -58,6 +60,9 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
     if (path === "/api/action") {
       const action = request.postDataJSON();
       state.actions.push(action);
+      if (state.actionError)
+        return reply({ error: "Comando non riuscito." }, 503);
+      if (state.delayState) return reply({ ok: true });
       const server = state.servers.find((server) => server.id === action.id)!;
       if (action.action === "start" || action.action === "restart")
         server.state = "active";
@@ -93,9 +98,17 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
 async function login(page: Page) {
   await page.goto("/");
   await page.getByLabel("Password della dashboard").fill("test-password");
-  await page.getByRole("button", { name: "Accedi alla dashboard" }).click();
+  await page.getByRole("button", { name: "Accedi", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "I tuoi server." }),
+    page.getByRole("heading", { name: "Server", exact: true }),
+  ).toBeVisible();
+}
+
+async function openDetail(page: Page) {
+  await page.getByRole("link", { name: "Apri Minecraft", exact: true }).click();
+  await expect(page).toHaveURL(/\/servers\/minecraft$/);
+  await expect(
+    page.getByRole("heading", { name: "Minecraft", exact: true }),
   ).toBeVisible();
 }
 
@@ -103,12 +116,12 @@ test("login errors, empty state and logout", async ({ page }) => {
   await mockDashboard(page, []);
   await page.goto("/");
   await page.getByLabel("Password della dashboard").fill("wrong");
-  await page.getByRole("button", { name: "Accedi alla dashboard" }).click();
+  await page.getByRole("button", { name: "Accedi", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     /Password errata/,
   );
   await login(page);
-  await expect(page.getByText("Pronto per il tuo primo server")).toBeVisible();
+  await expect(page.getByText("Nessun server configurato")).toBeVisible();
   await page.getByRole("button", { name: "Esci", exact: true }).click();
   await expect(page.getByLabel("Password della dashboard")).toBeVisible();
 });
@@ -118,25 +131,27 @@ test("server actions require confirmation and autostart is independent", async (
 }) => {
   const state = await mockDashboard(page);
   await login(page);
-  await page.getByRole("switch").click();
-  await expect(page.getByRole("switch")).toBeChecked();
+  await openDetail(page);
+  await page.getByRole("tab", { name: "Configurazione", exact: true }).click();
+  await page.getByRole("switch", { name: "Avvio al boot Minecraft" }).click();
   await expect(
-    page.getByRole("button", { name: "Accendi server" }),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Accendi server" }).click();
+    page.getByRole("switch", { name: "Avvio al boot Minecraft" }),
+  ).toBeChecked();
   await expect(
-    page.getByRole("button", { name: "Spegni server" }),
+    page.getByRole("button", { name: "Avvia", exact: true }),
   ).toBeEnabled();
+  await page.getByRole("button", { name: "Avvia", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Arresta" })).toBeEnabled();
   await page.getByRole("button", { name: /Riavvia/ }).click();
   await page.getByRole("button", { name: "Annulla", exact: true }).click();
   expect(state.actions.map((a) => a.action)).toEqual(["enable", "start"]);
   await page.getByRole("button", { name: /Riavvia/ }).click();
   await page.getByRole("button", { name: "Conferma", exact: true }).click();
   await expect.poll(() => state.actions.at(-1)?.action).toBe("restart");
-  await page.getByRole("button", { name: "Spegni server" }).click();
+  await page.getByRole("button", { name: "Arresta" }).click();
   await page.getByRole("button", { name: "Conferma", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Accendi server" }),
+    page.getByRole("button", { name: "Avvia", exact: true }),
   ).toBeEnabled();
   expect(state.actions.at(-1)?.action).toBe("stop");
   expect(
@@ -155,16 +170,18 @@ test("editor preserves unsaved changes on conflict and saves with revision", asy
 }) => {
   const state = await mockDashboard(page);
   await login(page);
-  await page
-    .getByRole("button", { name: "server.properties", exact: true })
-    .click();
+  await openDetail(page);
+  await page.getByRole("tab", { name: "Configurazione", exact: true }).click();
+  await page.getByRole("button", { name: /server.properties/ }).click();
   await expect(
     page.getByRole("button", { name: "Salva modifiche" }),
   ).toBeDisabled();
   await page.getByLabel("Contenuto configurazione").fill("difficulty=hard\n");
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("button", { name: "Chiudi", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Editor configurazione" }),
+  ).toBeVisible();
   state.conflict = true;
   await page.getByRole("button", { name: "Salva modifiche" }).click();
   await expect(
@@ -175,7 +192,9 @@ test("editor preserves unsaved changes on conflict and saves with revision", asy
   );
   state.conflict = false;
   await page.getByRole("button", { name: "Salva modifiche" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Editor configurazione" }),
+  ).not.toBeVisible();
   expect(state.text).toBe("difficulty=hard\n");
 });
 
@@ -185,9 +204,9 @@ test("running configuration is read-only and connection loss blocks controls", a
   const state = await mockDashboard(page);
   state.servers[0].state = "active";
   await login(page);
-  await page
-    .getByRole("button", { name: "server.properties", exact: true })
-    .click();
+  await openDetail(page);
+  await page.getByRole("tab", { name: "Configurazione", exact: true }).click();
+  await page.getByRole("button", { name: /server.properties/ }).click();
   await expect(page.getByLabel("Contenuto configurazione")).toHaveAttribute(
     "readonly",
     "",
@@ -201,14 +220,12 @@ test("running configuration is read-only and connection loss blocks controls", a
     "Connessione non disponibile",
     { timeout: 10_000 },
   );
-  await expect(
-    page.getByRole("button", { name: "Spegni server" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Arresta" })).toBeDisabled();
   await expect(page.getByRole("switch")).toBeDisabled();
   state.unavailable = false;
-  await expect(page.getByRole("button", { name: "Spegni server" })).toBeEnabled(
-    { timeout: 10_000 },
-  );
+  await expect(page.getByRole("button", { name: "Arresta" })).toBeEnabled({
+    timeout: 10_000,
+  });
 });
 
 test("logs load on demand, refresh, pause and stop polling when closed", async ({
@@ -217,7 +234,7 @@ test("logs load on demand, refresh, pause and stop polling when closed", async (
   const state = await mockDashboard(page);
   await login(page);
   expect(state.logRequests).toBe(0);
-  await page.getByRole("button", { name: "Log del server" }).click();
+  await openDetail(page);
   await expect(page.getByLabel("Log di Minecraft")).toContainText(
     "Server ready",
   );
@@ -250,7 +267,7 @@ test("logs load on demand, refresh, pause and stop polling when closed", async (
   await expect(
     page.getByRole("button", { name: "Aggiorna log", exact: true }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Log del server" }).click();
+  await page.getByRole("link", { name: "Tutti i server", exact: true }).click();
   const closedCount = state.logRequests;
   await page.waitForTimeout(4500);
   expect(state.logRequests).toBe(closedCount);
@@ -263,7 +280,7 @@ test("logs show empty, failed and expired-session states without stale content",
   const state = await mockDashboard(page);
   state.logText = "";
   await login(page);
-  await page.getByRole("button", { name: "Log del server" }).click();
+  await openDetail(page);
   await expect(page.getByText(/Nessun log visibile/)).toBeVisible();
   state.logText = "Server ready";
   await page.getByRole("button", { name: "Aggiorna log", exact: true }).click();
@@ -275,4 +292,166 @@ test("logs show empty, failed and expired-session states without stale content",
   state.logStatus = 401;
   await page.getByRole("button", { name: "Aggiorna log", exact: true }).click();
   await expect(page.getByLabel("Log di Minecraft")).not.toBeVisible();
+});
+
+test("overview separates status from controls and routes to server details", async ({
+  page,
+}) => {
+  const state = await mockDashboard(page);
+  state.servers.push(
+    {
+      ...state.servers[0],
+      id: "palworld",
+      name: "Palworld",
+      description: "Dedicated server",
+      state: "active",
+    },
+    {
+      ...state.servers[0],
+      id: "valheim",
+      name: "Valheim",
+      description: "Mondo condiviso",
+      state: "failed",
+    },
+    {
+      ...state.servers[0],
+      id: "terraria",
+      name: "Terraria",
+      description: "Sandbox",
+      loaded: false,
+    },
+  );
+  await login(page);
+  await expect(
+    page
+      .getByRole("listitem", { name: "Minecraft", exact: true })
+      .getByText("Spento", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("listitem", { name: "Palworld", exact: true })
+      .getByText("Acceso", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("listitem", { name: "Valheim", exact: true })
+      .getByText("In errore", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("listitem", { name: "Terraria", exact: true })
+      .getByRole("button", { name: "Avvia", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole("switch")).toHaveCount(0);
+  expect(state.logRequests).toBe(0);
+  await page.screenshot({
+    path: test.info().outputPath("overview.png"),
+    fullPage: true,
+  });
+  await openDetail(page);
+  await expect(page.getByLabel("Log di Minecraft")).toBeVisible();
+  await page.screenshot({
+    path: test.info().outputPath("detail.png"),
+    fullPage: true,
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Minecraft", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Log", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("tab", { name: "Configurazione", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("link", { name: "Tutti i server", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test("commands display progress until confirmed and success feedback expires", async ({
+  page,
+}) => {
+  const state = await mockDashboard(page);
+  state.delayState = true;
+  await login(page);
+  await page.getByRole("button", { name: "Avvia", exact: true }).click();
+  await expect(page.getByText("Avvio in corso", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Attendi…", exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByText("Acceso", { exact: true })).not.toBeVisible();
+  state.servers[0].state = "active";
+  await expect(page.getByText("Acceso", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByRole("listitem").getByRole("status")).toHaveText(
+    /Operazione completata/,
+  );
+  await expect(
+    page.getByText("Operazione completata.", { exact: true }),
+  ).not.toBeVisible({ timeout: 8000 });
+});
+
+test("action failures stay beside the affected server and can be dismissed", async ({
+  page,
+}) => {
+  const state = await mockDashboard(page);
+  state.actionError = true;
+  await login(page);
+  await page.getByRole("button", { name: "Avvia", exact: true }).click();
+  await expect(page.getByRole("listitem").getByRole("alert")).toContainText(
+    "Comando non riuscito.",
+  );
+  await expect(page.getByText("Spento", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Chiudi messaggio" }).click();
+  await expect(page.getByRole("listitem").getByRole("alert")).toHaveCount(0);
+});
+
+test("direct detail login, missing server and unsaved navigation guard", async ({
+  page,
+}) => {
+  await mockDashboard(page);
+  await page.goto("/servers/minecraft");
+  await page.getByLabel("Password della dashboard").fill("test-password");
+  await page.getByRole("button", { name: "Accedi", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Minecraft", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Configurazione", exact: true }).click();
+  await page.getByRole("button", { name: /server.properties/ }).click();
+  await page.getByLabel("Contenuto configurazione").fill("changed");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("tab", { name: "Log", exact: true }).click();
+  await expect(page.getByLabel("Contenuto configurazione")).toHaveValue(
+    "changed",
+  );
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("link", { name: "Tutti i server", exact: true }).click();
+  await expect(page).toHaveURL(/\/servers\/minecraft$/);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("link", { name: "Tutti i server", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/servers/missing");
+  await expect(
+    page.getByRole("heading", { name: "Server non trovato" }),
+  ).toBeVisible();
+});
+
+test("unconfirmed command times out without falsely reporting success", async ({
+  page,
+}) => {
+  await page.clock.install();
+  const state = await mockDashboard(page);
+  state.delayState = true;
+  await login(page);
+  await page.getByRole("button", { name: "Avvia", exact: true }).click();
+  await expect.poll(() => state.actions.length).toBe(1);
+  await expect(page.getByText("Avvio in corso", { exact: true })).toBeVisible();
+  await page.clock.fastForward(25_000);
+  await expect(page.getByRole("listitem").getByRole("alert")).toContainText(
+    "Stato non confermato",
+  );
+  await expect(page.getByText("Spento", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Operazione completata.", { exact: true }),
+  ).not.toBeVisible();
 });

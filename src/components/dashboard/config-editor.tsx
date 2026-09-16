@@ -1,13 +1,5 @@
-import { ArrowDownToLine, LoaderCircle, ShieldCheck } from "lucide-react";
+import { ArrowDownToLine, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { ConfigFile } from "@/lib/types";
 export type Editor = ConfigFile & {
@@ -35,57 +27,47 @@ export function ConfigEditor({
   onChange,
 }: Props) {
   const dirty = editor !== null && editor.text !== editor.original;
+  if (!editor) return null;
   return (
-    <Dialog
-      open={editor !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+    <section
+      aria-label="Editor configurazione"
+      className="mt-6 space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"
     >
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-4xl">
-        <DialogHeader>
-          <p className="mb-2 text-xs text-violet-400">
-            {editor?.serverName} / Configurazione
-          </p>
-          <DialogTitle className="break-all pr-5">{editor?.name}</DialogTitle>
-          <DialogDescription>
-            {editor?.editable
-              ? "Salva le modifiche e avvia il server per applicarle. La versione precedente viene conservata in un backup."
-              : "Il server è acceso o sta cambiando stato. Spegnilo e riapri il file per modificarlo."}
-          </DialogDescription>
-        </DialogHeader>
-        <Textarea
-          aria-label="Contenuto configurazione"
-          spellCheck={false}
-          readOnly={!editor?.editable || saving}
-          value={editor?.text || ""}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-[45dvh] min-h-64 resize-y overflow-auto bg-background font-mono text-xs leading-6 whitespace-pre"
-        />
-        <p role="status" className="text-sm text-rose-300">
-          {error}
+      <div>
+        <h3 className="break-all font-semibold">{editor.name}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {editor?.editable
+            ? "Le modifiche saranno applicate al prossimo avvio."
+            : "Sola lettura. Arresta il server e riapri il file per modificarlo."}
         </p>
-        <DialogFooter className="items-center gap-3">
-          <span className="mr-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3.5" />
-            Backup automatico
-          </span>
-          <Button variant="outline" disabled={saving} onClick={onClose}>
-            Chiudi
-          </Button>
-          <Button
-            disabled={!editor?.editable || saving || !dirty}
-            onClick={() => void onSave()}
-          >
-            {saving ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <ArrowDownToLine className="size-4" />
-            )}
-            Salva modifiche
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+      <Textarea
+        aria-label="Contenuto configurazione"
+        spellCheck={false}
+        readOnly={!editor?.editable || saving}
+        value={editor?.text || ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-[45dvh] min-h-64 resize-y overflow-auto bg-background font-mono text-xs leading-6 whitespace-pre"
+      />
+      <p role="status" className="text-sm text-rose-300">
+        {error}
+      </p>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Button variant="outline" disabled={saving} onClick={onClose}>
+          Chiudi
+        </Button>
+        <Button
+          disabled={!editor?.editable || saving || !dirty}
+          onClick={() => void onSave()}
+        >
+          {saving ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <ArrowDownToLine className="size-4" />
+          )}
+          Salva modifiche
+        </Button>
+      </div>
+    </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, RotateCw, Terminal } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -11,30 +11,6 @@ import type { ServerLogs } from "@/lib/types";
 type Props = { serverId: string; serverName: string };
 
 export function ServerLogViewer({ serverId, serverName }: Props) {
-  const [open, setOpen] = useState(false);
-  return (
-    <section className="mt-6 border-t border-border pt-4">
-      <Button
-        variant="ghost"
-        className="w-full justify-between px-0"
-        aria-expanded={open}
-        aria-controls={`logs-${serverId}`}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className="flex items-center gap-2">
-          <Terminal className="size-4" />
-          Log del server
-        </span>
-        <ChevronDown className={`size-4 ${open ? "rotate-180" : ""}`} />
-      </Button>
-      <div id={`logs-${serverId}`}>
-        {open && <LogContent serverId={serverId} serverName={serverName} />}
-      </div>
-    </section>
-  );
-}
-
-function LogContent({ serverId, serverName }: Props) {
   const [logs, setLogs] = useState<ServerLogs | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
@@ -81,7 +57,7 @@ function LogContent({ serverId, serverName }: Props) {
   }, [serverId, automatic, refresh]);
 
   return (
-    <div className="mt-3 space-y-3">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Switch
@@ -104,7 +80,7 @@ function LogContent({ serverId, serverName }: Props) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Ultimi {logs?.limit ?? 200} eventi del journal, dal meno al più recente.
+        Ultimi {logs?.limit ?? 200} eventi, dal meno al più recente.
         {automatic
           ? " Aggiornamento ogni 4 secondi."
           : " Aggiornamento automatico in pausa."}
@@ -125,7 +101,7 @@ function LogContent({ serverId, serverName }: Props) {
           <pre
             aria-label={`Log di ${serverName}`}
             tabIndex={0}
-            className="max-h-80 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-xs leading-5 whitespace-pre-wrap break-all focus-visible:outline-2 focus-visible:outline-ring"
+            className="min-h-80 max-h-[60vh] overflow-auto rounded-md border border-border bg-card/50 p-4 sm:p-5 font-mono text-xs leading-5 whitespace-pre-wrap break-all focus-visible:outline-2 focus-visible:outline-ring"
           >
             {logs.text}
           </pre>
