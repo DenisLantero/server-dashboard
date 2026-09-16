@@ -6,6 +6,9 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
     authenticated: false,
     unavailable: false,
     conflict: false,
+    logText: "2026-09-16T20:00:00+0200 Server ready\n",
+    logStatus: 200,
+    logRequests: 0,
     text: "difficulty=normal\n",
     actions: [] as { id: string; action: string }[],
     servers: servers ?? [
@@ -45,6 +48,13 @@ async function mockDashboard(page: Page, servers?: ServerInfo[]) {
       return state.unavailable
         ? reply({ error: "Non disponibile" }, 503)
         : reply(state.servers);
+    if (path === "/api/logs") {
+      state.logRequests++;
+      expect(new URL(request.url()).searchParams.get("id")).toBe("minecraft");
+      return state.logStatus === 200
+        ? reply({ text: state.logText, limit: 200 })
+        : reply({ error: "Log non disponibili." }, state.logStatus);
+    }
     if (path === "/api/action") {
       const action = request.postDataJSON();
       state.actions.push(action);
@@ -199,4 +209,70 @@ test("running configuration is read-only and connection loss blocks controls", a
   await expect(page.getByRole("button", { name: "Spegni server" })).toBeEnabled(
     { timeout: 10_000 },
   );
+});
+
+test("logs load on demand, refresh, pause and stop polling when closed", async ({
+  page,
+}) => {
+  const state = await mockDashboard(page);
+  await login(page);
+  expect(state.logRequests).toBe(0);
+  await page.getByRole("button", { name: "Log del server" }).click();
+  await expect(page.getByLabel("Log di Minecraft")).toContainText(
+    "Server ready",
+  );
+  state.logText = "Player joined <script>alert('test')</script>";
+  await expect(page.getByLabel("Log di Minecraft")).toHaveText(state.logText, {
+    timeout: 10_000,
+  });
+  await page.getByRole("switch", { name: "Aggiorna automaticamente" }).click();
+  await expect(
+    page.getByRole("button", { name: "Aggiorna log", exact: true }),
+  ).toBeEnabled();
+  state.logText = "Manual refresh";
+  await page.getByRole("button", { name: "Aggiorna log", exact: true }).click();
+  await expect(page.getByLabel("Log di Minecraft")).toHaveText(
+    "Manual refresh",
+  );
+  const count = state.logRequests;
+  await page.waitForTimeout(4500);
+  expect(state.logRequests).toBe(count);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: test.info().outputPath("logs.png"),
+    fullPage: true,
+  });
+  await page.getByRole("switch", { name: "Aggiorna automaticamente" }).click();
+  await expect(
+    page.getByRole("button", { name: "Aggiorna log", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Log del server" }).click();
+  const closedCount = state.logRequests;
+  await page.waitForTimeout(4500);
+  expect(state.logRequests).toBe(closedCount);
+  await expect(page.getByLabel("Log di Minecraft")).not.toBeVisible();
+});
+
+test("logs show empty, failed and expired-session states without stale content", async ({
+  page,
+}) => {
+  const state = await mockDashboard(page);
+  state.logText = "";
+  await login(page);
+  await page.getByRole("button", { name: "Log del server" }).click();
+  await expect(page.getByText(/Nessun log visibile/)).toBeVisible();
+  state.logText = "Server ready";
+  await page.getByRole("button", { name: "Aggiorna log", exact: true }).click();
+  await expect(page.getByLabel("Log di Minecraft")).toHaveText("Server ready");
+  state.logStatus = 503;
+  await page.getByRole("button", { name: "Aggiorna log", exact: true }).click();
+  await expect(page.getByText(/I log mostrati potrebbero/)).toBeVisible();
+  await expect(page.getByLabel("Log di Minecraft")).toHaveText("Server ready");
+  state.logStatus = 401;
+  await page.getByRole("button", { name: "Aggiorna log", exact: true }).click();
+  await expect(page.getByLabel("Log di Minecraft")).not.toBeVisible();
 });

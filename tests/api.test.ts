@@ -35,6 +35,7 @@ test("API validation, authentication and logout without systemd", async (t) => {
   });
   await writeFile(join(directory, "password"), "test-only-password");
   await writeFile(join(directory, "servers.json"), "[]");
+  assert.equal((await GET(request("logs?id=game"))).status, 401);
   const loginBody = JSON.stringify({ password: "test-only-password" });
   assert.equal((await GET(request("servers"))).status, 401);
   for (const body of ["{", "null", "[]", "42", '"text"']) {
@@ -73,6 +74,11 @@ test("API validation, authentication and logout without systemd", async (t) => {
   assert.match(cookie, /Secure/);
   assert.match(cookie, /SameSite=strict/i);
   const headers = { Cookie: cookie.split(";")[0] };
+  assert.equal(
+    (await GET(request("logs?id=unknown", undefined, headers))).status,
+    404,
+  );
+  assert.equal((await GET(request("logs", undefined, headers))).status, 404);
   const response = await GET(request("servers", undefined, headers));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");

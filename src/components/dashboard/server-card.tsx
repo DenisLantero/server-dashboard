@@ -1,3 +1,4 @@
+import { ServerLogViewer } from "./server-log-viewer";
 import {
   ArrowUpRight,
   Box,
@@ -147,6 +148,7 @@ export function ServerCard({
             </p>
           )}
         </div>
+        <ServerLogViewer serverId={server.id} serverName={server.name} />
       </CardContent>
     </Card>
   );
