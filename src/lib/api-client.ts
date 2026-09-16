@@ -6,9 +6,14 @@ export class RequestError extends Error {
     super(message);
   }
 }
-export async function api<T>(path: string, body?: unknown): Promise<T> {
+export async function api<T>(
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(path, {
     cache: "no-store",
+    signal,
     ...(body === undefined
       ? {}
       : {

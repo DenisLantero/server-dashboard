@@ -13,3 +13,4 @@ export type ServerInfo = {
 };
 export type ConfigFile = { text: string; revision: string; editable: boolean };
 export type Action = "start" | "stop" | "restart" | "enable" | "disable";
+export type ServerLogs = { text: string; limit: number };

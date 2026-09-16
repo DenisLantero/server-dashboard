@@ -1,3 +1,4 @@
+import { readLogs } from "../../src/lib/logs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -33,7 +34,7 @@ test("systemd controls, config integrity and API authentication", async (t) => {
   await mkdir(unitDir, { recursive: true });
   await writeFile(
     join(unitDir, unit),
-    "[Service]\nExecStart=sleep 300\n[Install]\nWantedBy=default.target\n",
+    "[Service]\nExecStartPre=echo dashboard-journal-test-marker\nExecStart=sleep 300\n[Install]\nWantedBy=default.target\n",
     { flag: "wx" },
   );
   process.env.DASHBOARD_DATA_DIR = directory;
@@ -159,6 +160,20 @@ test("systemd controls, config integrity and API authentication", async (t) => {
         200,
       );
       await waitState("active");
+      // Journald ingestion can lag behind the service state transition.
+      let logs = "";
+      for (let attempt = 0; attempt < 50; attempt++) {
+        logs = (await readLogs("test")).text;
+        if (logs.includes("dashboard-journal-test-marker")) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.match(logs, /dashboard-journal-test-marker/);
+      const response = await GET(request("logs?id=test"));
+      assert.equal(response.status, 200);
+      assert.match(
+        (await response.json()).text,
+        /dashboard-journal-test-marker/,
+      );
       const live = await readConfig("test", 0);
       assert.equal(live.editable, false);
       await assert.rejects(

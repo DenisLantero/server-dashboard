@@ -3,6 +3,7 @@
 Una dashboard personale in **Next.js, TypeScript e shadcn/ui**, con tema nero/viola, per gestire i server di gioco già configurati con systemd.
 
 - Schede dei server con stato aggiornato ogni quattro secondi.
+- Log systemd per ciascun server, con aggiornamento automatico disattivabile.
 - Accensione, arresto e riavvio; conferma prima di interrompere un server.
 - Interruttore indipendente per l'avvio automatico al boot.
 - Editor dei file configurati, disponibile in scrittura a server spento.
@@ -50,6 +51,14 @@ Per avviare i servizi utente al boot senza login, un amministratore deve abilita
 L'editor modifica testo UTF-8 fino a 200 KB. I file sono leggibili anche a server acceso, ma il backend rifiuta il salvataggio finché l'unità non è inattiva o fallita. I backup si trovano in `backups/<server-id>/` nella directory dati. Per ripristinare, fermare il server e copiare il backup desiderato sul file originale. La conservazione dei backup è manuale.
 
 L'editor non valida la sintassi specifica dei giochi: verificare i valori prima di avviare il server. Evitare di avviare il gioco da un altro terminale mentre si salva un file. Password, certificati, backup e configurazioni reali restano fuori dalla repository.
+
+## Log dei server
+
+Espandere **Log del server** nella scheda: vengono letti gli ultimi 200 eventi del journal, con data e ora, dal meno al più recente. Il pannello funziona anche a server spento. Si aggiorna ogni quattro secondi mentre è aperto; l'interruttore mette in pausa gli aggiornamenti e **Aggiorna log** richiede una nuova lettura. Chiudendo il pannello si interrompono le richieste.
+
+La dashboard legge soltanto il journal dell'unità configurata, tramite `journalctl --user-unit` per i servizi utente e `journalctl --unit` per quelli di sistema. Non esegue comandi forniti dal browser e richiede la stessa sessione autenticata degli altri controlli. Ogni lettura ha un timeout di 10 secondi e un limite di 1 MiB; errori o output troppo grande vengono segnalati nel pannello.
+
+Sono visibili solo gli eventi accessibili all'utente che esegue la dashboard. Un journal vuoto può indicare assenza di eventi o permessi insufficienti. I giochi che scrivono esclusivamente su file non compaiono qui: occorre che il servizio invii l'output al journal (per esempio `StandardOutput=journal` e `StandardError=journal`). La dashboard non modifica i permessi o la configurazione dei servizi. Per i dettagli dei filtri consultare la [documentazione di journalctl](https://www.freedesktop.org/software/systemd/man/255/journalctl.html).
 
 ## Verifica
 

@@ -1,3 +1,4 @@
+import { readLogs } from "@/lib/logs";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -81,6 +82,8 @@ export async function GET(request: NextRequest) {
     authenticated(request);
     if (request.nextUrl.pathname === "/api/servers")
       return json(await Promise.all((await definitions()).map(inspect)));
+    if (request.nextUrl.pathname === "/api/logs")
+      return json(await readLogs(request.nextUrl.searchParams.get("id")));
     if (request.nextUrl.pathname === "/api/config") {
       const index = request.nextUrl.searchParams.get("file");
       if (index === null || !/^\d+$/.test(index))
